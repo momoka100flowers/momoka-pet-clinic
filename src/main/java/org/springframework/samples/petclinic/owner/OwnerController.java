@@ -15,13 +15,18 @@
  */
 package org.springframework.samples.petclinic.owner;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.TreeMap;
 
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -95,13 +100,9 @@ class OwnerController {
 	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
 			Model model) {
 		// allow parameterless GET request for /owners to return all records
-		String lastName = owner.getLastName();
-		if (lastName == null) {
-			lastName = ""; // empty string signifies broadest possible search
-		}
 
-		// find owners by last name
-		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
+		// find owners by first name, last name, address, city and telephone
+		Page<Owner> ownersResults = findPaginatedForOwners(page, owner);
 		if (ownersResults.isEmpty()) {
 			// no owners found
 			result.rejectValue("lastName", "notFound", "not found");
@@ -127,10 +128,56 @@ class OwnerController {
 		return "owners/ownersList";
 	}
 
-	private Page<Owner> findPaginatedForOwnersLastName(int page, String lastname) {
+	private Page<Owner> findPaginatedForOwners(int page, Owner owner) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		return owners.findByLastNameContaining(lastname, pageable);
+		String firstName = owner.getFirstName();
+		String lastName = owner.getLastName();
+		String address = owner.getAddress();
+		String city = owner.getCity();
+		String telephone = owner.getTelephone();
+
+		Page<Owner> ownersByFirstName = Page.empty();
+		Page<Owner> ownersByLastName = Page.empty();
+		Page<Owner> ownersByAddress = Page.empty();
+		Page<Owner> ownersByCity = Page.empty();
+		Page<Owner> ownersByTelephone = Page.empty();
+
+		// If the text fields are empty, we should not perform a search by that field.
+		if (!firstName.isBlank()) {
+			ownersByFirstName = owners.findByFirstNameContaining(firstName, pageable);
+		}
+		if (!lastName.isBlank()) {
+			ownersByLastName = owners.findByLastNameContaining(lastName, pageable);
+		}
+		if (!address.isBlank()) {
+			ownersByAddress = owners.findByAddressContaining(address, pageable);
+		}
+		if (!city.isBlank()) {
+			ownersByCity = owners.findByCityContaining(city, pageable);
+		}
+		if (!telephone.isBlank()) {
+			ownersByTelephone = owners.findByTelephone(telephone, pageable);
+		}
+
+		// If all fields are empty, return all owners
+		if (ownersByFirstName.isEmpty() && ownersByLastName.isEmpty() && ownersByAddress.isEmpty() && ownersByCity.isEmpty() && ownersByTelephone.isEmpty()) {
+			return owners.findAll(pageable);
+		}
+
+		Map<Integer, Owner> uniqueOwners = new TreeMap<>();
+		ownersByFirstName.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+		ownersByLastName.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+		ownersByAddress.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+		ownersByCity.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+		ownersByTelephone.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+
+		List<Owner> sortedOwners = new ArrayList<>(uniqueOwners.values());
+		int start = (int) pageable.getOffset();
+		int end = Math.min(start + pageable.getPageSize(), sortedOwners.size());
+		List<Owner> pageContent = start >= sortedOwners.size() ? List.of() : sortedOwners.subList(start, end);
+
+		return new PageImpl<>(pageContent, pageable, sortedOwners.size());
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")

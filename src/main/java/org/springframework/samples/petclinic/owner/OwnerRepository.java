@@ -17,6 +17,8 @@ package org.springframework.samples.petclinic.owner;
 
 import java.util.Optional;
 
+import javax.print.attribute.standard.PageRanges;
+
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -36,6 +38,15 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 
 	/**
+	 * Retrieve {@link Owner}s from the data store by first name, returning all owners
+	 * whose first name <i>starts</i> with the given name.
+	 * @param firstName Value to search for
+	 * @return a Collection of matching {@link Owner}s (or an empty Collection if none
+	 * found)
+	 */
+	Page<Owner> findByFirstNameContaining(String firstName, Pageable pageable);
+
+	/**
 	 * Retrieve {@link Owner}s from the data store by last name, returning all owners
 	 * whose last name <i>starts</i> with the given name.
 	 * @param lastName Value to search for
@@ -43,6 +54,33 @@ public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 	 * found)
 	 */
 	Page<Owner> findByLastNameContaining(String lastName, Pageable pageable);
+
+	/**
+	 * Retrieve {@link Owner}s from the data store by address, returning all owners whose
+	 * address <i>contains</i> the given text.
+	 * @param address Value to search for
+	 * @return a Collection of matching {@link Owner}s (or an empty Collection if none
+	 * found)
+	 */
+	Page<Owner> findByAddressContaining(String address, Pageable pageable);
+
+	/**
+	 * Retrieve {@link Owner}s from the data store by city, returning all owners whose
+	 * city <i>contains</i> the given text.
+	 * @param city Value to search for
+	 * @return a Collection of matching {@link Owner}s (or an empty Collection if none
+	 * found)
+	 */
+	Page<Owner> findByCityContaining(String city, Pageable pageable);
+
+	/**
+	 * Retrieve {@link Owner}s from the data store by telephone, returning all owners
+	 * whose telephone number <i>contains</i> the given text.
+	 * @param telephone Value to search for
+	 * @return a Collection of matching {@link Owner}s (or an empty Collection if none
+	 * found)
+	 */
+	Page<Owner> findByTelephone(String telephone, Pageable pageable);
 
 	/**
 	 * Retrieve an {@link Owner} from the data store by id.
