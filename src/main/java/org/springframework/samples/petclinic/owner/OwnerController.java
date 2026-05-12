@@ -70,8 +70,8 @@ class OwnerController {
 	public Owner findOwner(@PathVariable(name = "ownerId", required = false) Integer ownerId) {
 		return ownerId == null ? new Owner()
 				: this.owners.findById(ownerId)
-					.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
-							+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
+						.orElseThrow(() -> new IllegalArgumentException("Owner not found with id: " + ownerId
+								+ ". Please ensure the ID is correct " + "and the owner exists in the database."));
 	}
 
 	@GetMapping("/owners/new")
@@ -131,53 +131,32 @@ class OwnerController {
 	private Page<Owner> findPaginatedForOwners(int page, Owner owner) {
 		int pageSize = 5;
 		Pageable pageable = PageRequest.of(page - 1, pageSize);
-		String firstName = owner.getFirstName();
-		String lastName = owner.getLastName();
-		String address = owner.getAddress();
-		String city = owner.getCity();
-		String telephone = owner.getTelephone();
 
-		Page<Owner> ownersByFirstName = Page.empty();
-		Page<Owner> ownersByLastName = Page.empty();
-		Page<Owner> ownersByAddress = Page.empty();
-		Page<Owner> ownersByCity = Page.empty();
-		Page<Owner> ownersByTelephone = Page.empty();
-
-		// If the text fields are empty, we should not perform a search by that field.
-		if (!firstName.isBlank()) {
-			ownersByFirstName = owners.findByFirstNameContaining(firstName, pageable);
-		}
-		if (!lastName.isBlank()) {
-			ownersByLastName = owners.findByLastNameContaining(lastName, pageable);
-		}
-		if (!address.isBlank()) {
-			ownersByAddress = owners.findByAddressContaining(address, pageable);
-		}
-		if (!city.isBlank()) {
-			ownersByCity = owners.findByCityContaining(city, pageable);
-		}
-		if (!telephone.isBlank()) {
-			ownersByTelephone = owners.findByTelephone(telephone, pageable);
-		}
+		String firstName = blankToNull(owner.getFirstName());
+		String lastName = blankToNull(owner.getLastName());
+		String address = blankToNull(owner.getAddress());
+		String city = blankToNull(owner.getCity());
+		String telephone = blankToNull(owner.getTelephone());
 
 		// If all fields are empty, return all owners
-		if (ownersByFirstName.isEmpty() && ownersByLastName.isEmpty() && ownersByAddress.isEmpty() && ownersByCity.isEmpty() && ownersByTelephone.isEmpty()) {
+		if (firstName == null && lastName == null && address == null && city == null && telephone == null) {
 			return owners.findAll(pageable);
 		}
 
-		Map<Integer, Owner> uniqueOwners = new TreeMap<>();
-		ownersByFirstName.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
-		ownersByLastName.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
-		ownersByAddress.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
-		ownersByCity.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
-		ownersByTelephone.getContent().forEach(ownerResult -> uniqueOwners.put(ownerResult.getId(), ownerResult));
+		return owners.findBySearchConditions(
+				firstName,
+				lastName,
+				address,
+				city,
+				telephone,
+				pageable);
+	}
 
-		List<Owner> sortedOwners = new ArrayList<>(uniqueOwners.values());
-		int start = (int) pageable.getOffset();
-		int end = Math.min(start + pageable.getPageSize(), sortedOwners.size());
-		List<Owner> pageContent = start >= sortedOwners.size() ? List.of() : sortedOwners.subList(start, end);
-
-		return new PageImpl<>(pageContent, pageable, sortedOwners.size());
+	private String blankToNull(String value) {
+		if (value == null || value.isBlank()) {
+			return null;
+		}
+		return value.trim();
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")
@@ -207,6 +186,7 @@ class OwnerController {
 
 	/**
 	 * Custom handler for displaying an owner.
+	 * 
 	 * @param ownerId the ID of the owner to display
 	 * @return a ModelMap with the model attributes for the view
 	 */

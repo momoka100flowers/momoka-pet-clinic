@@ -22,6 +22,8 @@ import javax.print.attribute.standard.PageRanges;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 /**
  * Repository class for <code>Owner</code> domain objects. All method names are compliant
@@ -97,4 +99,19 @@ public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 	 */
 	Optional<Owner> findById(Integer id);
 
+	@Query("""
+			SELECT o FROM Owner o
+			WHERE (:firstName IS NULL OR o.firstName LIKE CONCAT('%', :firstName, '%'))
+			AND (:lastName IS NULL OR o.lastName LIKE CONCAT('%', :lastName, '%'))
+			AND (:address IS NULL OR o.address LIKE CONCAT('%', :address, '%'))
+			AND (:city IS NULL OR o.city LIKE CONCAT('%', :city, '%'))
+			AND (:telephone IS NULL OR o.telephone = :telephone)
+			""")
+	Page<Owner> findBySearchConditions(
+			@Param("firstName") String firstName,
+			@Param("lastName") String lastName,
+			@Param("address") String address,
+			@Param("city") String city,
+			@Param("telephone") String telephone,
+			Pageable pageable);
 }
